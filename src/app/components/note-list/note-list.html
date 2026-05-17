@@ -1,0 +1,68 @@
+<div class="mt-6 space-y-4">
+
+    <!-- Search Input -->
+    <input type="text" placeholder="Search notes..." class="w-full rounded-lg border p-3 outline-none"
+        [value]="notesService.searchTerm()" (input)="notesService.searchTerm.set($any($event.target).value)" />
+
+    <!-- Total Notes -->
+    <p class="text-sm text-gray-500">
+        Total Notes:
+        {{ notesService.totalNotes() }}
+    </p>
+
+    <!-- Notes List -->
+    @for (note of notesService.filteredNotes(); track note.id) {
+
+    <div class="rounded-xl bg-white p-4 shadow">
+
+        @if (notesService.editingNoteId() === note.id) {
+
+        <!-- Edit Mode -->
+
+        <input type="text" class="w-full rounded border p-2" [value]="notesService.editingText()"
+            (input)="notesService.editingText.set($any($event.target).value)"
+            (keydown.enter)="notesService.saveEdit()" />
+
+        <div class="mt-3 flex gap-2">
+
+            <button class="rounded bg-green-600 px-3 py-1 text-white" (click)="notesService.saveEdit()">
+                Save
+            </button>
+
+            <button class="rounded bg-gray-500 px-3 py-1 text-white" (click)="notesService.cancelEdit()">
+                Cancel
+            </button>
+
+        </div>
+
+        } @else {
+
+        <!-- Normal Mode -->
+
+        <div class="flex items-center justify-between">
+
+            <p>{{ note.text }}</p>
+
+            <div class="flex gap-2">
+
+                <button class="rounded bg-blue-500 px-3 py-1 text-sm text-white"
+                    (click)="notesService.startEditing(note)">
+                    Edit
+                </button>
+
+                <button class="rounded bg-red-500 px-3 py-1 text-sm text-white"
+                    (click)="notesService.deleteNote(note.id)">
+                    Delete
+                </button>
+
+            </div>
+
+        </div>
+
+        }
+
+    </div>
+
+    }
+
+</div>
