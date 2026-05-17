@@ -1,61 +1,98 @@
-<div class="mt-6 space-y-4">
+<div class="mt-6 space-y-6">
 
-    <!-- Search Input -->
-    <input type="text" placeholder="Search notes..." class="w-full rounded-lg border p-3 outline-none"
-        [value]="notesService.searchTerm()" (input)="notesService.searchTerm.set($any($event.target).value)" />
+    <!-- NOTES SECTION -->
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
 
-    <!-- Total Notes -->
-    <p class="text-sm text-gray-500">
-        Total Notes:
-        {{ notesService.totalNotes() }}
-    </p>
+        <h2 class="mb-4 text-2xl font-bold">
+            Notes
+        </h2>
 
-    <!-- Notes List -->
-    @for (note of notesService.filteredNotes(); track note.id) {
+        <!-- SEARCH SECTION -->
+        <input type="text" placeholder="Search notes..." class="w-full rounded-lg border p-3 outline-none"
+            [value]="notesService.searchTerm()" (input)="notesService.searchTerm.set($any($event.target).value)" />
 
-    <div class="rounded-xl bg-white p-4 shadow">
+        <p class="m-2 text-sm text-gray-500">
+            Total Notes:
+            {{ notesService.totalNotes() }}
+        </p>
 
-        @if (notesService.editingNoteId() === note.id) {
+        <!-- LOADING -->
+        @if (notesService.loading()) {
 
-        <!-- Edit Mode -->
+        <p class="text-gray-500">
+            Loading notes...
+        </p>
 
-        <input type="text" class="w-full rounded border p-2" [value]="notesService.editingText()"
-            (input)="notesService.editingText.set($any($event.target).value)"
-            (keydown.enter)="notesService.saveEdit()" />
+        }
 
-        <div class="mt-3 flex gap-2">
 
-            <button class="rounded bg-green-600 px-3 py-1 text-white" (click)="notesService.saveEdit()">
-                Save
-            </button>
+        <!-- ERROR -->
+        @if (notesService.error()) {
 
-            <button class="rounded bg-gray-500 px-3 py-1 text-white" (click)="notesService.cancelEdit()">
-                Cancel
-            </button>
+        <p class="text-red-500">
+            {{ notesService.error() }}
+        </p>
 
-        </div>
+        }
 
-        } @else {
 
-        <!-- Normal Mode -->
+        <!-- NOTES -->
+        @for (
+        note of notesService.filteredNotes();
+        track note.id
+        ) {
 
-        <div class="flex items-center justify-between">
+        <div class="mb-4 rounded-xl bg-gray-50 p-4">
 
-            <p>{{ note.text }}</p>
+            @if (
+            notesService.editingNoteId() === note.id
+            ) {
 
-            <div class="flex gap-2">
+            <!-- EDIT MODE -->
 
-                <button class="rounded bg-blue-500 px-3 py-1 text-sm text-white"
-                    (click)="notesService.startEditing(note)">
-                    Edit
+            <input type="text" class="w-full rounded border p-2" [value]="notesService.editingText()" (input)="notesService.editingText.set(
+                    $any($event.target).value
+                )" (keydown.enter)="notesService.saveEdit()" />
+
+            <div class="mt-3 flex gap-2">
+
+                <button class="rounded bg-green-600 px-3 py-1 text-white" (click)="notesService.saveEdit()">
+                    Save
                 </button>
 
-                <button class="rounded bg-red-500 px-3 py-1 text-sm text-white"
-                    (click)="notesService.deleteNote(note.id)">
-                    Delete
+                <button class="rounded bg-gray-500 px-3 py-1 text-white" (click)="notesService.cancelEdit()">
+                    Cancel
                 </button>
 
             </div>
+
+            } @else {
+
+            <!-- NORMAL MODE -->
+
+            <div class="flex items-center justify-between">
+
+                <p>
+                    {{ note.text }}
+                </p>
+
+                <div class="flex gap-2">
+
+                    <button class="rounded bg-blue-500 px-3 py-1 text-sm text-white"
+                        (click)="notesService.startEditing(note)">
+                        Edit
+                    </button>
+
+                    <button class="rounded bg-red-500 px-3 py-1 text-sm text-white"
+                        (click)="notesService.deleteNote(note.id)">
+                        Delete
+                    </button>
+
+                </div>
+
+            </div>
+
+            }
 
         </div>
 
@@ -63,6 +100,75 @@
 
     </div>
 
-    }
+    <!-- AI SECTION -->
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+
+        <div class="mb-4 flex items-center justify-between">
+
+            <h3 class="text-xl font-bold">
+                AI Assistant
+            </h3>
+
+            <button class="rounded-lg bg-gray-800 px-4 py-2 text-white" (click)="notesService.summarizeNotes()">
+                Summarize Notes
+            </button>
+
+
+        </div>
+
+        <!-- AI LOADING -->
+        @if (notesService.aiLoading()) {
+
+        <p class="mt-4 text-gray-500">
+            AI is thinking...
+        </p>
+
+        }
+
+        <!-- CHAT MESSAGES -->
+        <div #chatContainer
+            class="mt-6 mb-4 max-h-[500px]  rounded-xl bg-gray-100 p-5  space-y-4 space-x-2 overflow-y-auto">
+            @for (
+            message of notesService.chatMessages();
+            track $index
+            ) {
+
+            <div class="flex" [class.justify-end]="message.role === 'user'"
+                [class.justify-start]="message.role === 'assistant'">
+
+                <div class="max-w-[80%] rounded-2xl p-4 shadow-sm" [class.bg-blue-500]="message.role === 'user'"
+                    [class.text-white]="message.role === 'user'" [class.bg-white]="message.role === 'assistant'">
+
+                    <!-- <p class="mb-2 text-xs font-semibold uppercase tracking-wider opacity-70">
+                        {{ message.role }}
+                    </p> -->
+
+                    <p class="whitespace-pre-line break-words leading-relaxed">
+                        {{ message.content }}
+                    </p>
+
+                </div>
+
+            </div>
+
+            }
+
+        </div>
+
+        <!-- ASK AI -->
+        <div class="flex gap-2">
+
+            <input [value]="notesService.aiQuestion()" (input)="notesService.aiQuestion.set(
+                                $any($event.target).value
+                            )" placeholder="Ask AI about your notes..." class="flex-1 rounded-lg border p-3"
+                (keydown.enter)="notesService.askAI()" />
+
+            <button (click)="notesService.askAI()" class="rounded-lg bg-green-600 px-5 text-white">
+                Ask
+            </button>
+
+        </div>
+
+    </div>
 
 </div>

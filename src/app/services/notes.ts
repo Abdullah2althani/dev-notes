@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { Note } from "../models/note";
+import { ChatMessage } from "../models/chat-message";
 
 @Injectable({
   providedIn: "root",
@@ -14,6 +15,27 @@ export class NotesService {
 
   // Main notes state
   notes = signal<Note[]>([]);
+
+  // Loading state
+  loading = signal(false);
+
+  // Error state
+  error = signal("");
+
+  // AI summary state
+  aiSummary = signal("");
+
+  // AI question state
+  aiQuestion = signal("");
+
+  // AI answer state
+  aiAnswer = signal("");
+
+  // AI loading state
+  aiLoading = signal(false);
+
+  // Chat messages state
+  chatMessages = signal<ChatMessage[]>([]);
 
   // Edit state
   editingNoteId = signal<number | null>(null);
@@ -160,9 +182,119 @@ export class NotesService {
   // }
 
   // LOAD NOTES FROM FASTAPI
+  // loadNotes() {
+  //   this.http.get<Note[]>(this.apiUrl).subscribe((notes) => {
+  //     this.notes.set(notes);
+  //   });
+  // }
+
+  // LOAD NOTES WITH LOADING AND ERROR HANDLING
   loadNotes() {
-    this.http.get<Note[]>(this.apiUrl).subscribe((notes) => {
-      this.notes.set(notes);
+    this.loading.set(true);
+
+    this.error.set("");
+
+    this.http.get<Note[]>(this.apiUrl).subscribe({
+      next: (notes) => {
+        this.notes.set(notes);
+
+        this.loading.set(false);
+      },
+
+      error: () => {
+        this.error.set("Could not load notes");
+
+        this.loading.set(false);
+      },
     });
+  }
+
+  // AI SUMMARY NOTES
+  summarizeNotes() {
+    this.aiLoading.set(true);
+
+    this.aiSummary.set("");
+    this.chatMessages.update((messages) => [
+      ...messages,
+
+      {
+        role: "user",
+        content: "Summarize my notes",
+      },
+    ]);
+
+    this.http
+      .post<{
+        result: string;
+      }>("http://127.0.0.1:8000/summarize", {})
+      .subscribe({
+        next: (response) => {
+          this.chatMessages.update((messages) => [
+            ...messages,
+
+            {
+              role: "assistant",
+              content: response.result,
+            },
+          ]);
+          this.aiLoading.set(false);
+        },
+
+        error: () => {
+          this.aiSummary.set("AI request failed");
+
+          this.aiLoading.set(false);
+        },
+      });
+  }
+
+  // Ask AI
+  askAI() {
+    const question = this.aiQuestion().trim();
+
+    if (!question) return;
+
+    this.aiLoading.set(true);
+
+    this.aiAnswer.set("");
+
+    this.chatMessages.update((messages) => [
+      ...messages,
+
+      {
+        role: "user",
+        content: question,
+      },
+    ]);
+
+    this.http
+      .post<{
+        result: string;
+      }>("http://127.0.0.1:8000/ask-ai", {
+        question,
+      })
+      .subscribe({
+        next: (response) => {
+          this.aiAnswer.set(response.result);
+
+          this.aiQuestion.set("");
+
+          this.chatMessages.update((messages) => [
+            ...messages,
+
+            {
+              role: "assistant",
+              content: response.result,
+            },
+          ]);
+          this.aiLoading.set(false);
+        },
+
+        error: () => {
+          this.aiAnswer.set("AI request failed");
+
+          this.aiLoading.set(false);
+        },
+      });
   }
 }

@@ -1,5 +1,6 @@
 import { Component, inject } from "@angular/core";
 import { NotesService } from "../../services/notes";
+import { ElementRef, ViewChild, effect } from "@angular/core";
 
 @Component({
   selector: "app-note-list",
@@ -8,11 +9,22 @@ import { NotesService } from "../../services/notes";
   styleUrl: "./note-list.css",
 })
 export class NoteList {
-  // Inject the NotesService
   notesService = inject(NotesService);
 
-  // Load notes on initialization
+  @ViewChild("chatContainer")
+  chatContainer?: ElementRef;
+
   constructor() {
-    this.notesService.loadNotes();
+    effect(() => {
+      this.notesService.chatMessages();
+
+      setTimeout(() => {
+        const el = this.chatContainer?.nativeElement;
+
+        if (!el) return;
+
+        el.scrollTop = el.scrollHeight;
+      });
+    });
   }
 }
