@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
 
 # Initialize FastAPI
 app = FastAPI()
@@ -128,6 +129,7 @@ class QuestionRequest(BaseModel):
     question: str
 
 
+# Ask AI
 @app.post("/ask-ai")
 def ask_ai(request: QuestionRequest):
 
@@ -171,3 +173,69 @@ def ask_ai(request: QuestionRequest):
         "result":
         data["choices"][0]["message"]["content"]
     }
+
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+headers = {
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json",
+}
+
+# // Ask AI
+@app.post("/ask-stream")
+async def ask_stream(data: dict):
+
+    question = data.get("question", "")
+
+    notes_data = data.get("notes", [])
+
+    notes_text = "\n".join([
+        note["text"] for note in notes_data
+    ])
+
+    prompt = f"""
+    Here are the user's notes:
+
+    {notes_text}
+
+    User question:
+    {question}
+    """
+
+    def generate():
+
+        response = requests.post(
+            OPENROUTER_URL,
+            headers=headers,
+            json={
+                "model": "deepseek/deepseek-chat-v3-0324:free",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "stream": True
+            },
+            stream=True
+        )
+
+        for line in response.iter_lines():
+
+            if line:
+
+                decoded = line.decode("utf-8")
+
+                if decoded.startswith("data: "):
+
+                    chunk = decoded.replace("data: ", "")
+
+                    if chunk == "[DONE]":
+                        break
+
+                    yield chunk
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/plain"
+    )
