@@ -7,6 +7,11 @@ import { ChatMessage } from "../models/chat-message";
   providedIn: "root",
 })
 export class NotesService {
+  // Constructor
+  constructor() {
+    this.loadNotes();
+  }
+
   // HTTP client
   http = inject(HttpClient);
 

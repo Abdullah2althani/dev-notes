@@ -1,4 +1,6 @@
 <div class="mt-6 rounded-xl bg-white p-4 shadow">
+    <h2 class="mb-4 text-2xl font-bold">
+        Create new note</h2>
     <input type="text" placeholder="Write a note..." class="w-full rounded-lg border p-3 outline-none" [value]="note()"
         (input)="note.set($any($event.target).value)" (keydown.enter)="addNote()" />
 

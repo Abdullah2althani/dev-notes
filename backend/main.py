@@ -1,5 +1,6 @@
 import os
 import requests
+import json
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -19,8 +20,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Fake database
-notes = []
+# Notes file
+NOTES_FILE = "notes.json"
+
+def load_notes():
+
+    try:
+
+        with open(NOTES_FILE, "r") as file:
+            return json.load(file)
+
+    except:
+        return []
+
+
+def save_notes(notes_data):
+
+    with open(NOTES_FILE, "w") as file:
+        json.dump(notes_data, file, indent=2)
+
+
+notes = load_notes()
 
 # Note schema
 class Note(BaseModel):
@@ -37,7 +57,10 @@ def get_notes():
 # CREATE note
 @app.post("/notes")
 def create_note(note: Note):
-    notes.append(note)
+
+    notes.append(note.dict())
+
+    save_notes(notes)
 
     return note
 
@@ -45,17 +68,19 @@ def create_note(note: Note):
 # DELETE note
 @app.delete("/notes/{note_id}")
 def delete_note(note_id: int):
+
     global notes
 
     notes = [
         note for note in notes
-        if note.id != note_id
+        if note["id"] != note_id
     ]
+
+    save_notes(notes)
 
     return {
         "message": "Note deleted"
     }
-
 
 # UPDATE note
 @app.put("/notes/{note_id}")
@@ -63,14 +88,13 @@ def update_note(note_id: int, updated_note: Note):
 
     for index, note in enumerate(notes):
 
-        if note.id == note_id:
-            notes[index] = updated_note
+        if note["id"] == note_id:
+
+            notes[index] = updated_note.dict()
+
+            save_notes(notes)
 
             return updated_note
-
-    return {
-        "message": "Note not found"
-    }
 
 # // Load environment variables
 load_dotenv()
@@ -83,7 +107,7 @@ OPENROUTER_API_KEY = os.getenv(
 def summarize_notes():
 
     notes_text = "\n".join([
-        note.text for note in notes
+        note["text"] for note in notes
     ])
 
     prompt = f"""
@@ -120,6 +144,14 @@ def summarize_notes():
 
     data = response.json()
 
+    print(data)
+
+
+    if "choices" not in data:
+        return {
+            "error": data
+        }
+
     return {
         "result":
         data["choices"][0]["message"]["content"]
@@ -134,7 +166,7 @@ class QuestionRequest(BaseModel):
 def ask_ai(request: QuestionRequest):
 
     notes_text = "\n".join([
-        note.text for note in notes
+        note["text"] for note in notes
     ])
 
     prompt = f"""
@@ -181,7 +213,7 @@ headers = {
     "Content-Type": "application/json",
 }
 
-# // Ask AI
+# Ask AI Stream
 @app.post("/ask-stream")
 async def ask_stream(data: dict):
 
@@ -233,7 +265,20 @@ async def ask_stream(data: dict):
                     if chunk == "[DONE]":
                         break
 
-                    yield chunk
+                    try:
+
+                        json_data = json.loads(chunk)
+
+                        content = (
+                            json_data["choices"][0]["delta"]
+                            .get("content", "")
+                        )
+
+                        if content:
+                            yield content
+
+                    except:
+                        pass
 
     return StreamingResponse(
         generate(),
